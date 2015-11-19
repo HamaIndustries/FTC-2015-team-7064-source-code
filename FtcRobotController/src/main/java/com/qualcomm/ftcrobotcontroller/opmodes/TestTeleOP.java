@@ -29,6 +29,8 @@ public class TestTeleOP extends OpMode {
     final static double BL_MAX_RANGE  = 0.90;
     final static double END_MIN_RANGE  = 0.20;
     final static double END_MAX_RANGE  = 0.7;
+    final static double ARM_MIN_RANGE  = 0.20;
+    final static double ARM_MAX_RANGE  = 0.7;
     // position of the arm servo.
     double bRPosition;
 
@@ -36,7 +38,7 @@ public class TestTeleOP extends OpMode {
     double bRDelta = 0.05;
 
     // position of the claw servo
-    double bRPosition;
+    double bLPosition;
 
     // amount to change the claw servo position by
     double bLDelta = 0.05;
@@ -52,6 +54,14 @@ public class TestTeleOP extends OpMode {
 
     // amount to change the claw servo position by
     double endDelta = 0.1;
+
+    // position of the claw servo
+    double armPosition;
+
+    // amount to change the claw servo position by
+    double armDelta = 0.1;
+
+
 // ////////////////////////////////////////////////////////////////////////FIN DEFIN////////////////////////////
     DcMotor motorRight;
     DcMotor motorRight_2;
@@ -61,6 +71,7 @@ public class TestTeleOP extends OpMode {
     Servo bL;
     Servo mid;
     Servo end;
+    Servo arm;
     /**
      * Constructor
      */
@@ -87,23 +98,28 @@ public class TestTeleOP extends OpMode {
 		 *   "motor_1" is on the right side of the bot.
 		 *   "motor_2" is on the left side of the bot.
 		 *
-		 * We also assume that there are two servos "servo_1" and "servo_6"
-		 *    "servo_1" controls the arm joint of the manipulator.
+		 //We also assume that there are two servos "servo_1" and "servo_6"
+		 //   "servo_1" controls the arm joint of the manipulator.
 		 *    "servo_6" controls the claw joint of the manipulator.
 		 */
         motorRight = hardwareMap.dcMotor.get("motor_2");
         motorLeft = hardwareMap.dcMotor.get("motor_1");
-        motorRight_2 = hardwareMap.dcMotor.get("motor_3");
-        motorLeft_2 = hardwareMap.dcMotor.get("motor_4");
         motorLeft.setDirection(DcMotor.Direction.REVERSE);
-        motorLeft_2.setDirection(DcMotor.Direction.REVERSE);
 
-        arm = hardwareMap.servo.get("servo_1");
-        claw = hardwareMap.servo.get("servo_6");
+
+        bR = hardwareMap.servo.get("base_R");
+        bL = hardwareMap.servo.get("base_L");
+        mid = hardwareMap.servo.get("middle");
+        end = hardwareMap.servo.get("end");
+        bL.setDirection(Servo.Direction.REVERSE);
+        arm = hardwareMap.servo.get("arm");
 
         // assign the starting position of the wrist and claw
+        bRPosition = 0.2;
+        bLPosition = 0.2;
+        midPosition = 0.2;
+        endPosition = 0.2;
         armPosition = 0.2;
-        clawPosition = 0.2;
     }
 
     /*
@@ -140,48 +156,65 @@ public class TestTeleOP extends OpMode {
         motorLeft.setPower(left);
 
         // update the position of the arm.
-        if (gamepad1.a) {
+        if (gamepad2.right_trigger > 0.25) {
             // if the A button is pushed on gamepad1, increment the position of
             // the arm servo.
+            bRPosition += bRDelta;
+        }
+
+        if (gamepad2.left_trigger > 0.25) {
+            // if the Y button is pushed on gamepad1, decrease the position of
+            // the arm servo.
+            bRPosition -= bRDelta;
+        }
+
+        // update the position of the claw
+        if (gamepad2.right_trigger > 0.25) {
+            bLPosition += bLDelta;
+        }
+
+        if (gamepad2.left_trigger > 0.25) {
+            bLPosition -= bLDelta;
+        }
+
+        // update the position of the claw
+        if (gamepad2.right_bumper) {
+            midPosition += midDelta;
+        }
+
+        if (gamepad2.left_bumper) {
+            midPosition -= midDelta;
+        }
+        if (gamepad2.x) {
+            endPosition += endDelta;
+        }
+
+        if (gamepad2.y) {
+            endPosition -= endDelta;
+        }
+        if (gamepad2.a) {
             armPosition += armDelta;
         }
 
-        if (gamepad1.y) {
-            // if the Y button is pushed on gamepad1, decrease the position of
-            // the arm servo.
+        if (gamepad2.b) {
             armPosition -= armDelta;
         }
 
-        // update the position of the claw
-        if (gamepad1.left_bumper) {
-            clawPosition += clawDelta;
-        }
 
-        if (gamepad1.left_trigger > 0.25) {
-            clawPosition -= clawDelta;
-        }
-
-        if (gamepad1.b) {
-            clawPosition -= clawDelta;
-        }
-
-        // update the position of the claw
-        if (gamepad1.x) {
-            clawPosition += clawDelta;
-        }
-
-        if (gamepad1.b) {
-            clawPosition -= clawDelta;
-        }
 
         // clip the position values so that they never exceed their allowed range.
-        armPosition = Range.clip(armPosition, ARM_MIN_RANGE, ARM_MAX_RANGE);
-        clawPosition = Range.clip(clawPosition, CLAW_MIN_RANGE, CLAW_MAX_RANGE);
+        bRPosition = Range.clip(bRPosition, BR_MIN_RANGE, BR_MAX_RANGE);
+        bLPosition = Range.clip(bLPosition, BL_MIN_RANGE, BL_MAX_RANGE);
 
         // write position values to the wrist and claw servo
+        bR.setPosition(bRPosition);
+        bL.setPosition(bLPosition);
+        midPosition = Range.clip(midPosition, MID_MIN_RANGE, MID_MAX_RANGE);
+        endPosition = Range.clip(endPosition, END_MIN_RANGE, END_MAX_RANGE);
+        mid.setPosition(midPosition);
+        end.setPosition(endPosition);
+        armPosition = Range.clip(armPosition, ARM_MIN_RANGE, ARM_MAX_RANGE);
         arm.setPosition(armPosition);
-        claw.setPosition(clawPosition);
-
 		/*
 		 * Send telemetry data back to driver station. Note that if we are using
 		 * a legacy NXT-compatible motor controller, then the getPower() method
@@ -191,7 +224,10 @@ public class TestTeleOP extends OpMode {
 
         telemetry.addData("Text", "*** Robot Data***");
         telemetry.addData("arm", "arm:  " + String.format("%.2f", armPosition));
-        telemetry.addData("claw", "claw:  " + String.format("%.2f", clawPosition));
+        telemetry.addData("bR", "bR:  " + String.format("%.2f", bRPosition));
+        telemetry.addData("bL", "bL:  " + String.format("%.2f", bLPosition));
+        telemetry.addData("mid", "mid:  " + String.format("%.2f", midPosition));
+        telemetry.addData("end", "end:  " + String.format("%.2f", endPosition));
         telemetry.addData("left tgt pwr",  "left  pwr: " + String.format("%.2f", left));
         telemetry.addData("right tgt pwr", "right pwr: " + String.format("%.2f", right));
     }
